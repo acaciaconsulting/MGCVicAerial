@@ -1,0 +1,1 @@
+var json_MGCVicElectricalLighting_15 = {"type":"FeatureCollection","name":"MGCVicElectricalLighting_15","crs":{"type":"name","properties":{"name":"urn:ogc:def:crs:OGC:1.3:CRS84"}},"features":[]}
