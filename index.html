@@ -1,0 +1,1406 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="data/MGCVicBunkersPrevious_0.js"></script>
+        <script src="data/MGCVicGreensPrevious_1.js"></script>
+        <script src="data/MGCVicBunkers2025_2.js"></script>
+        <script src="data/MGCVicFairways_3.js"></script>
+        <script src="data/MGCVicGreens_4.js"></script>
+        <script src="data/MGCVicTees_5.js"></script>
+        <script src="data/MGCVicIrrigationDistribution_6.js"></script>
+        <script src="data/MGCVicIrrigationHead_7.js"></script>
+        <script src="data/MGCVicIrrigationSpike_8.js"></script>
+        <script src="data/MGCVicIrrigationTrunk_9.js"></script>
+        <script src="data/MGCVicIrrigationValve_10.js"></script>
+        <script src="data/MGCVicDrainageInternalSIorJCN_11.js"></script>
+        <script src="data/MGCVicDrainageInternal_12.js"></script>
+        <script src="data/MGCVicDrainageSubsoil_13.js"></script>
+        <script src="data/MGCVicElectricalDistribution_14.js"></script>
+        <script src="data/MGCVicElectricalLighting_15.js"></script>
+        <script src="data/MGCVicElectricalMSB_16.js"></script>
+        <script src="data/MGCVicInternalNonGolfServices_17.js"></script>
+        <script src="data/MGCVicExternalServices_18.js"></script>
+        <script src="data/MGCVicStormwaterExternal_19.js"></script>
+        <script>
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[-37.92719970232558,145.07428056252408],[-37.908379088631655,145.11172414549446]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        function pop_MGCVicBunkersPrevious_0(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicBunkersPrevious_0_0() {
+            return {
+                pane: 'pane_MGCVicBunkersPrevious_0',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(133,182,111,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicBunkersPrevious_0');
+        map.getPane('pane_MGCVicBunkersPrevious_0').style.zIndex = 400;
+        map.getPane('pane_MGCVicBunkersPrevious_0').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicBunkersPrevious_0 = new L.geoJson(json_MGCVicBunkersPrevious_0, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicBunkersPrevious_0',
+            layerName: 'layer_MGCVicBunkersPrevious_0',
+            pane: 'pane_MGCVicBunkersPrevious_0',
+            onEachFeature: pop_MGCVicBunkersPrevious_0,
+            style: style_MGCVicBunkersPrevious_0_0,
+        });
+        bounds_group.addLayer(layer_MGCVicBunkersPrevious_0);
+        map.addLayer(layer_MGCVicBunkersPrevious_0);
+        function pop_MGCVicGreensPrevious_1(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicGreensPrevious_1_0() {
+            return {
+                pane: 'pane_MGCVicGreensPrevious_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(231,113,72,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicGreensPrevious_1');
+        map.getPane('pane_MGCVicGreensPrevious_1').style.zIndex = 401;
+        map.getPane('pane_MGCVicGreensPrevious_1').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicGreensPrevious_1 = new L.geoJson(json_MGCVicGreensPrevious_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicGreensPrevious_1',
+            layerName: 'layer_MGCVicGreensPrevious_1',
+            pane: 'pane_MGCVicGreensPrevious_1',
+            onEachFeature: pop_MGCVicGreensPrevious_1,
+            style: style_MGCVicGreensPrevious_1_0,
+        });
+        bounds_group.addLayer(layer_MGCVicGreensPrevious_1);
+        map.addLayer(layer_MGCVicGreensPrevious_1);
+        function pop_MGCVicBunkers2025_2(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Hole'] !== null ? autolinker.link(String(feature.properties['Hole']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Area'] !== null ? autolinker.link(String(feature.properties['Area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Area (m2)'] !== null ? autolinker.link(String(feature.properties['Area (m2)']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicBunkers2025_2_0() {
+            return {
+                pane: 'pane_MGCVicBunkers2025_2',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(190,178,151,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicBunkers2025_2');
+        map.getPane('pane_MGCVicBunkers2025_2').style.zIndex = 402;
+        map.getPane('pane_MGCVicBunkers2025_2').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicBunkers2025_2 = new L.geoJson(json_MGCVicBunkers2025_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicBunkers2025_2',
+            layerName: 'layer_MGCVicBunkers2025_2',
+            pane: 'pane_MGCVicBunkers2025_2',
+            onEachFeature: pop_MGCVicBunkers2025_2,
+            style: style_MGCVicBunkers2025_2_0,
+        });
+        bounds_group.addLayer(layer_MGCVicBunkers2025_2);
+        map.addLayer(layer_MGCVicBunkers2025_2);
+        function pop_MGCVicFairways_3(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Area'] !== null ? autolinker.link(String(feature.properties['Area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Hole'] !== null ? autolinker.link(String(feature.properties['Hole']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicFairways_3_0() {
+            return {
+                pane: 'pane_MGCVicFairways_3',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(232,113,141,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicFairways_3');
+        map.getPane('pane_MGCVicFairways_3').style.zIndex = 403;
+        map.getPane('pane_MGCVicFairways_3').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicFairways_3 = new L.geoJson(json_MGCVicFairways_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicFairways_3',
+            layerName: 'layer_MGCVicFairways_3',
+            pane: 'pane_MGCVicFairways_3',
+            onEachFeature: pop_MGCVicFairways_3,
+            style: style_MGCVicFairways_3_0,
+        });
+        bounds_group.addLayer(layer_MGCVicFairways_3);
+        map.addLayer(layer_MGCVicFairways_3);
+        function pop_MGCVicGreens_4(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Area'] !== null ? autolinker.link(String(feature.properties['Area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Hole'] !== null ? autolinker.link(String(feature.properties['Hole']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicGreens_4_0() {
+            return {
+                pane: 'pane_MGCVicGreens_4',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(225,89,137,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicGreens_4');
+        map.getPane('pane_MGCVicGreens_4').style.zIndex = 404;
+        map.getPane('pane_MGCVicGreens_4').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicGreens_4 = new L.geoJson(json_MGCVicGreens_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicGreens_4',
+            layerName: 'layer_MGCVicGreens_4',
+            pane: 'pane_MGCVicGreens_4',
+            onEachFeature: pop_MGCVicGreens_4,
+            style: style_MGCVicGreens_4_0,
+        });
+        bounds_group.addLayer(layer_MGCVicGreens_4);
+        map.addLayer(layer_MGCVicGreens_4);
+        function pop_MGCVicTees_5(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Area'] !== null ? autolinker.link(String(feature.properties['Area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Hole'] !== null ? autolinker.link(String(feature.properties['Hole']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicTees_5_0() {
+            return {
+                pane: 'pane_MGCVicTees_5',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(133,182,111,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicTees_5');
+        map.getPane('pane_MGCVicTees_5').style.zIndex = 405;
+        map.getPane('pane_MGCVicTees_5').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicTees_5 = new L.geoJson(json_MGCVicTees_5, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicTees_5',
+            layerName: 'layer_MGCVicTees_5',
+            pane: 'pane_MGCVicTees_5',
+            onEachFeature: pop_MGCVicTees_5,
+            style: style_MGCVicTees_5_0,
+        });
+        bounds_group.addLayer(layer_MGCVicTees_5);
+        map.addLayer(layer_MGCVicTees_5);
+        function pop_MGCVicIrrigationDistribution_6(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Diameter'] !== null ? autolinker.link(String(feature.properties['Diameter']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Material'] !== null ? autolinker.link(String(feature.properties['Material']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Type'] !== null ? autolinker.link(String(feature.properties['Type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicIrrigationDistribution_6_0() {
+            return {
+                pane: 'pane_MGCVicIrrigationDistribution_6',
+                opacity: 1,
+                color: 'rgba(133,182,111,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicIrrigationDistribution_6');
+        map.getPane('pane_MGCVicIrrigationDistribution_6').style.zIndex = 406;
+        map.getPane('pane_MGCVicIrrigationDistribution_6').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicIrrigationDistribution_6 = new L.geoJson(json_MGCVicIrrigationDistribution_6, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicIrrigationDistribution_6',
+            layerName: 'layer_MGCVicIrrigationDistribution_6',
+            pane: 'pane_MGCVicIrrigationDistribution_6',
+            onEachFeature: pop_MGCVicIrrigationDistribution_6,
+            style: style_MGCVicIrrigationDistribution_6_0,
+        });
+        bounds_group.addLayer(layer_MGCVicIrrigationDistribution_6);
+        map.addLayer(layer_MGCVicIrrigationDistribution_6);
+        function pop_MGCVicIrrigationHead_7(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Hole'] !== null ? autolinker.link(String(feature.properties['Hole']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Type'] !== null ? autolinker.link(String(feature.properties['Type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Brand'] !== null ? autolinker.link(String(feature.properties['Brand']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicIrrigationHead_7_0() {
+            return {
+                pane: 'pane_MGCVicIrrigationHead_7',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(114,155,111,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicIrrigationHead_7');
+        map.getPane('pane_MGCVicIrrigationHead_7').style.zIndex = 407;
+        map.getPane('pane_MGCVicIrrigationHead_7').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicIrrigationHead_7 = new L.geoJson(json_MGCVicIrrigationHead_7, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicIrrigationHead_7',
+            layerName: 'layer_MGCVicIrrigationHead_7',
+            pane: 'pane_MGCVicIrrigationHead_7',
+            onEachFeature: pop_MGCVicIrrigationHead_7,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MGCVicIrrigationHead_7_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MGCVicIrrigationHead_7);
+        map.addLayer(layer_MGCVicIrrigationHead_7);
+        function pop_MGCVicIrrigationSpike_8(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Hole'] !== null ? autolinker.link(String(feature.properties['Hole']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Type'] !== null ? autolinker.link(String(feature.properties['Type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Brand'] !== null ? autolinker.link(String(feature.properties['Brand']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicIrrigationSpike_8_0() {
+            return {
+                pane: 'pane_MGCVicIrrigationSpike_8',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(232,113,141,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicIrrigationSpike_8');
+        map.getPane('pane_MGCVicIrrigationSpike_8').style.zIndex = 408;
+        map.getPane('pane_MGCVicIrrigationSpike_8').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicIrrigationSpike_8 = new L.geoJson(json_MGCVicIrrigationSpike_8, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicIrrigationSpike_8',
+            layerName: 'layer_MGCVicIrrigationSpike_8',
+            pane: 'pane_MGCVicIrrigationSpike_8',
+            onEachFeature: pop_MGCVicIrrigationSpike_8,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MGCVicIrrigationSpike_8_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MGCVicIrrigationSpike_8);
+        map.addLayer(layer_MGCVicIrrigationSpike_8);
+        function pop_MGCVicIrrigationTrunk_9(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Diameter'] !== null ? autolinker.link(String(feature.properties['Diameter']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Material'] !== null ? autolinker.link(String(feature.properties['Material']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Type'] !== null ? autolinker.link(String(feature.properties['Type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicIrrigationTrunk_9_0() {
+            return {
+                pane: 'pane_MGCVicIrrigationTrunk_9',
+                opacity: 1,
+                color: 'rgba(231,113,72,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicIrrigationTrunk_9');
+        map.getPane('pane_MGCVicIrrigationTrunk_9').style.zIndex = 409;
+        map.getPane('pane_MGCVicIrrigationTrunk_9').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicIrrigationTrunk_9 = new L.geoJson(json_MGCVicIrrigationTrunk_9, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicIrrigationTrunk_9',
+            layerName: 'layer_MGCVicIrrigationTrunk_9',
+            pane: 'pane_MGCVicIrrigationTrunk_9',
+            onEachFeature: pop_MGCVicIrrigationTrunk_9,
+            style: style_MGCVicIrrigationTrunk_9_0,
+        });
+        bounds_group.addLayer(layer_MGCVicIrrigationTrunk_9);
+        map.addLayer(layer_MGCVicIrrigationTrunk_9);
+        function pop_MGCVicIrrigationValve_10(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Hole'] !== null ? autolinker.link(String(feature.properties['Hole']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Type'] !== null ? autolinker.link(String(feature.properties['Type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Brand'] !== null ? autolinker.link(String(feature.properties['Brand']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicIrrigationValve_10_0() {
+            return {
+                pane: 'pane_MGCVicIrrigationValve_10',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(225,89,137,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicIrrigationValve_10');
+        map.getPane('pane_MGCVicIrrigationValve_10').style.zIndex = 410;
+        map.getPane('pane_MGCVicIrrigationValve_10').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicIrrigationValve_10 = new L.geoJson(json_MGCVicIrrigationValve_10, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicIrrigationValve_10',
+            layerName: 'layer_MGCVicIrrigationValve_10',
+            pane: 'pane_MGCVicIrrigationValve_10',
+            onEachFeature: pop_MGCVicIrrigationValve_10,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MGCVicIrrigationValve_10_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MGCVicIrrigationValve_10);
+        map.addLayer(layer_MGCVicIrrigationValve_10);
+        function pop_MGCVicDrainageInternalSIorJCN_11(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['SI of JCN'] !== null ? autolinker.link(String(feature.properties['SI of JCN']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicDrainageInternalSIorJCN_11_0() {
+            return {
+                pane: 'pane_MGCVicDrainageInternalSIorJCN_11',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(114,155,111,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicDrainageInternalSIorJCN_11');
+        map.getPane('pane_MGCVicDrainageInternalSIorJCN_11').style.zIndex = 411;
+        map.getPane('pane_MGCVicDrainageInternalSIorJCN_11').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicDrainageInternalSIorJCN_11 = new L.geoJson(json_MGCVicDrainageInternalSIorJCN_11, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicDrainageInternalSIorJCN_11',
+            layerName: 'layer_MGCVicDrainageInternalSIorJCN_11',
+            pane: 'pane_MGCVicDrainageInternalSIorJCN_11',
+            onEachFeature: pop_MGCVicDrainageInternalSIorJCN_11,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MGCVicDrainageInternalSIorJCN_11_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MGCVicDrainageInternalSIorJCN_11);
+        map.addLayer(layer_MGCVicDrainageInternalSIorJCN_11);
+        function pop_MGCVicDrainageInternal_12(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Diameter'] !== null ? autolinker.link(String(feature.properties['Diameter']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Material'] !== null ? autolinker.link(String(feature.properties['Material']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicDrainageInternal_12_0() {
+            return {
+                pane: 'pane_MGCVicDrainageInternal_12',
+                opacity: 1,
+                color: 'rgba(232,113,141,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicDrainageInternal_12');
+        map.getPane('pane_MGCVicDrainageInternal_12').style.zIndex = 412;
+        map.getPane('pane_MGCVicDrainageInternal_12').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicDrainageInternal_12 = new L.geoJson(json_MGCVicDrainageInternal_12, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicDrainageInternal_12',
+            layerName: 'layer_MGCVicDrainageInternal_12',
+            pane: 'pane_MGCVicDrainageInternal_12',
+            onEachFeature: pop_MGCVicDrainageInternal_12,
+            style: style_MGCVicDrainageInternal_12_0,
+        });
+        bounds_group.addLayer(layer_MGCVicDrainageInternal_12);
+        map.addLayer(layer_MGCVicDrainageInternal_12);
+        function pop_MGCVicDrainageSubsoil_13(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Diameter'] !== null ? autolinker.link(String(feature.properties['Diameter']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Material'] !== null ? autolinker.link(String(feature.properties['Material']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicDrainageSubsoil_13_0() {
+            return {
+                pane: 'pane_MGCVicDrainageSubsoil_13',
+                opacity: 1,
+                color: 'rgba(231,113,72,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicDrainageSubsoil_13');
+        map.getPane('pane_MGCVicDrainageSubsoil_13').style.zIndex = 413;
+        map.getPane('pane_MGCVicDrainageSubsoil_13').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicDrainageSubsoil_13 = new L.geoJson(json_MGCVicDrainageSubsoil_13, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicDrainageSubsoil_13',
+            layerName: 'layer_MGCVicDrainageSubsoil_13',
+            pane: 'pane_MGCVicDrainageSubsoil_13',
+            onEachFeature: pop_MGCVicDrainageSubsoil_13,
+            style: style_MGCVicDrainageSubsoil_13_0,
+        });
+        bounds_group.addLayer(layer_MGCVicDrainageSubsoil_13);
+        map.addLayer(layer_MGCVicDrainageSubsoil_13);
+        function pop_MGCVicElectricalDistribution_14(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Size'] !== null ? autolinker.link(String(feature.properties['Size']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Material'] !== null ? autolinker.link(String(feature.properties['Material']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Type'] !== null ? autolinker.link(String(feature.properties['Type']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicElectricalDistribution_14_0() {
+            return {
+                pane: 'pane_MGCVicElectricalDistribution_14',
+                opacity: 1,
+                color: 'rgba(225,89,137,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicElectricalDistribution_14');
+        map.getPane('pane_MGCVicElectricalDistribution_14').style.zIndex = 414;
+        map.getPane('pane_MGCVicElectricalDistribution_14').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicElectricalDistribution_14 = new L.geoJson(json_MGCVicElectricalDistribution_14, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicElectricalDistribution_14',
+            layerName: 'layer_MGCVicElectricalDistribution_14',
+            pane: 'pane_MGCVicElectricalDistribution_14',
+            onEachFeature: pop_MGCVicElectricalDistribution_14,
+            style: style_MGCVicElectricalDistribution_14_0,
+        });
+        bounds_group.addLayer(layer_MGCVicElectricalDistribution_14);
+        map.addLayer(layer_MGCVicElectricalDistribution_14);
+        function pop_MGCVicElectricalLighting_15(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Brand'] !== null ? autolinker.link(String(feature.properties['Brand']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicElectricalLighting_15_0() {
+            return {
+                pane: 'pane_MGCVicElectricalLighting_15',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(190,178,151,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicElectricalLighting_15');
+        map.getPane('pane_MGCVicElectricalLighting_15').style.zIndex = 415;
+        map.getPane('pane_MGCVicElectricalLighting_15').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicElectricalLighting_15 = new L.geoJson(json_MGCVicElectricalLighting_15, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicElectricalLighting_15',
+            layerName: 'layer_MGCVicElectricalLighting_15',
+            pane: 'pane_MGCVicElectricalLighting_15',
+            onEachFeature: pop_MGCVicElectricalLighting_15,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MGCVicElectricalLighting_15_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MGCVicElectricalLighting_15);
+        map.addLayer(layer_MGCVicElectricalLighting_15);
+        function pop_MGCVicElectricalMSB_16(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicElectricalMSB_16_0() {
+            return {
+                pane: 'pane_MGCVicElectricalMSB_16',
+                radius: 4.0,
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(133,182,111,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicElectricalMSB_16');
+        map.getPane('pane_MGCVicElectricalMSB_16').style.zIndex = 416;
+        map.getPane('pane_MGCVicElectricalMSB_16').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicElectricalMSB_16 = new L.geoJson(json_MGCVicElectricalMSB_16, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicElectricalMSB_16',
+            layerName: 'layer_MGCVicElectricalMSB_16',
+            pane: 'pane_MGCVicElectricalMSB_16',
+            onEachFeature: pop_MGCVicElectricalMSB_16,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_MGCVicElectricalMSB_16_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_MGCVicElectricalMSB_16);
+        map.addLayer(layer_MGCVicElectricalMSB_16);
+        function pop_MGCVicInternalNonGolfServices_17(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Size'] !== null ? autolinker.link(String(feature.properties['Size']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Easement'] !== null ? autolinker.link(String(feature.properties['Easement']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Owner'] !== null ? autolinker.link(String(feature.properties['Owner']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicInternalNonGolfServices_17_0() {
+            return {
+                pane: 'pane_MGCVicInternalNonGolfServices_17',
+                opacity: 1,
+                color: 'rgba(190,178,151,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicInternalNonGolfServices_17');
+        map.getPane('pane_MGCVicInternalNonGolfServices_17').style.zIndex = 417;
+        map.getPane('pane_MGCVicInternalNonGolfServices_17').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicInternalNonGolfServices_17 = new L.geoJson(json_MGCVicInternalNonGolfServices_17, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicInternalNonGolfServices_17',
+            layerName: 'layer_MGCVicInternalNonGolfServices_17',
+            pane: 'pane_MGCVicInternalNonGolfServices_17',
+            onEachFeature: pop_MGCVicInternalNonGolfServices_17,
+            style: style_MGCVicInternalNonGolfServices_17_0,
+        });
+        bounds_group.addLayer(layer_MGCVicInternalNonGolfServices_17);
+        map.addLayer(layer_MGCVicInternalNonGolfServices_17);
+        function pop_MGCVicExternalServices_18(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Size'] !== null ? autolinker.link(String(feature.properties['Size']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Easement'] !== null ? autolinker.link(String(feature.properties['Easement']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Owner'] !== null ? autolinker.link(String(feature.properties['Owner']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicExternalServices_18_0() {
+            return {
+                pane: 'pane_MGCVicExternalServices_18',
+                opacity: 1,
+                color: 'rgba(114,155,111,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicExternalServices_18');
+        map.getPane('pane_MGCVicExternalServices_18').style.zIndex = 418;
+        map.getPane('pane_MGCVicExternalServices_18').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicExternalServices_18 = new L.geoJson(json_MGCVicExternalServices_18, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicExternalServices_18',
+            layerName: 'layer_MGCVicExternalServices_18',
+            pane: 'pane_MGCVicExternalServices_18',
+            onEachFeature: pop_MGCVicExternalServices_18,
+            style: style_MGCVicExternalServices_18_0,
+        });
+        bounds_group.addLayer(layer_MGCVicExternalServices_18);
+        map.addLayer(layer_MGCVicExternalServices_18);
+        function pop_MGCVicStormwaterExternal_19(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['fid'] !== null ? autolinker.link(String(feature.properties['fid']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['id'] !== null ? autolinker.link(String(feature.properties['id']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Year'] !== null ? autolinker.link(String(feature.properties['Year']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Diameter'] !== null ? autolinker.link(String(feature.properties['Diameter']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Material'] !== null ? autolinker.link(String(feature.properties['Material']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Comment'] !== null ? autolinker.link(String(feature.properties['Comment']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_MGCVicStormwaterExternal_19_0() {
+            return {
+                pane: 'pane_MGCVicStormwaterExternal_19',
+                opacity: 1,
+                color: 'rgba(190,178,151,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_MGCVicStormwaterExternal_19');
+        map.getPane('pane_MGCVicStormwaterExternal_19').style.zIndex = 419;
+        map.getPane('pane_MGCVicStormwaterExternal_19').style['mix-blend-mode'] = 'normal';
+        var layer_MGCVicStormwaterExternal_19 = new L.geoJson(json_MGCVicStormwaterExternal_19, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_MGCVicStormwaterExternal_19',
+            layerName: 'layer_MGCVicStormwaterExternal_19',
+            pane: 'pane_MGCVicStormwaterExternal_19',
+            onEachFeature: pop_MGCVicStormwaterExternal_19,
+            style: style_MGCVicStormwaterExternal_19_0,
+        });
+        bounds_group.addLayer(layer_MGCVicStormwaterExternal_19);
+        map.addLayer(layer_MGCVicStormwaterExternal_19);
+        map.createPane('pane_GoogleSatellite_20');
+        map.getPane('pane_GoogleSatellite_20').style.zIndex = 420;
+        var layer_GoogleSatellite_20 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleSatellite_20',
+            opacity: 1.0,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+        });
+        layer_GoogleSatellite_20;
+        map.addLayer(layer_GoogleSatellite_20);
+        map.createPane('pane_1945MelbSeries_21');
+        map.getPane('pane_1945MelbSeries_21').style.zIndex = 421;
+        var img_1945MelbSeries_21 = 'data/1945MelbSeries_21.png';
+        var img_bounds_1945MelbSeries_21 = [[-37.927433446417865,145.08429885680704],[-37.90814657457412,145.10170591296597]];
+        var layer_1945MelbSeries_21 = new L.imageOverlay(img_1945MelbSeries_21,
+                                              img_bounds_1945MelbSeries_21,
+                                              {pane: 'pane_1945MelbSeries_21'});
+        bounds_group.addLayer(layer_1945MelbSeries_21);
+        map.addLayer(layer_1945MelbSeries_21);
+        map.createPane('pane_1976HAP_22');
+        map.getPane('pane_1976HAP_22').style.zIndex = 422;
+        var img_1976HAP_22 = 'data/1976HAP_22.png';
+        var img_bounds_1976HAP_22 = [[-37.927433446417865,145.08429885680704],[-37.90814657457412,145.10170591296597]];
+        var layer_1976HAP_22 = new L.imageOverlay(img_1976HAP_22,
+                                              img_bounds_1976HAP_22,
+                                              {pane: 'pane_1976HAP_22'});
+        bounds_group.addLayer(layer_1976HAP_22);
+        map.addLayer(layer_1976HAP_22);
+        map.createPane('pane_1981HAP_23');
+        map.getPane('pane_1981HAP_23').style.zIndex = 423;
+        var img_1981HAP_23 = 'data/1981HAP_23.png';
+        var img_bounds_1981HAP_23 = [[-37.927433446417865,145.08429885680704],[-37.90814657457412,145.10170591296597]];
+        var layer_1981HAP_23 = new L.imageOverlay(img_1981HAP_23,
+                                              img_bounds_1981HAP_23,
+                                              {pane: 'pane_1981HAP_23'});
+        bounds_group.addLayer(layer_1981HAP_23);
+        map.addLayer(layer_1981HAP_23);
+        map.createPane('pane_1983HAP_24');
+        map.getPane('pane_1983HAP_24').style.zIndex = 424;
+        var img_1983HAP_24 = 'data/1983HAP_24.png';
+        var img_bounds_1983HAP_24 = [[-37.927433446417865,145.08429885680704],[-37.90814657457412,145.10170591296597]];
+        var layer_1983HAP_24 = new L.imageOverlay(img_1983HAP_24,
+                                              img_bounds_1983HAP_24,
+                                              {pane: 'pane_1983HAP_24'});
+        bounds_group.addLayer(layer_1983HAP_24);
+        map.addLayer(layer_1983HAP_24);
+        map.createPane('pane_1989HAP_25');
+        map.getPane('pane_1989HAP_25').style.zIndex = 425;
+        var img_1989HAP_25 = 'data/1989HAP_25.png';
+        var img_bounds_1989HAP_25 = [[-37.927433446417865,145.08429885680704],[-37.90814657457412,145.10170591296597]];
+        var layer_1989HAP_25 = new L.imageOverlay(img_1989HAP_25,
+                                              img_bounds_1989HAP_25,
+                                              {pane: 'pane_1989HAP_25'});
+        bounds_group.addLayer(layer_1989HAP_25);
+        map.addLayer(layer_1989HAP_25);
+        var overlaysTree = [
+        {label: '<b>Aerial Imagery</b>',  selectAllCheckbox: true, children: [
+            {label: "1989 HAP", layer: layer_1989HAP_25},
+            {label: "1983 HAP", layer: layer_1983HAP_24},
+            {label: "1981 HAP", layer: layer_1981HAP_23},
+            {label: "1976 HAP", layer: layer_1976HAP_22},
+            {label: "1945 Melb Series", layer: layer_1945MelbSeries_21},
+            {label: "Google Satellite", layer: layer_GoogleSatellite_20},]},
+        {label: '<b>Infrastructure</b>',  selectAllCheckbox: true, children: [
+            {label: '<img src="legend/MGCVicStormwaterExternal_19.png" /> MGC Vic Stormwater (External)', layer: layer_MGCVicStormwaterExternal_19},
+            {label: '<img src="legend/MGCVicExternalServices_18.png" /> MGC Vic External Services', layer: layer_MGCVicExternalServices_18},
+            {label: '<img src="legend/MGCVicInternalNonGolfServices_17.png" /> MGC Vic Internal (Non-Golf) Services', layer: layer_MGCVicInternalNonGolfServices_17},
+            {label: '<img src="legend/MGCVicElectricalMSB_16.png" /> MGC Vic Electrical (MSB)', layer: layer_MGCVicElectricalMSB_16},
+            {label: '<img src="legend/MGCVicElectricalLighting_15.png" /> MGC Vic Electrical (Lighting)', layer: layer_MGCVicElectricalLighting_15},
+            {label: '<img src="legend/MGCVicElectricalDistribution_14.png" /> MGC Vic Electrical (Distribution)', layer: layer_MGCVicElectricalDistribution_14},]},
+        {label: '<b>Drainage</b>',  selectAllCheckbox: true, children: [
+            {label: '<img src="legend/MGCVicDrainageSubsoil_13.png" /> MGC Vic Drainage Subsoil', layer: layer_MGCVicDrainageSubsoil_13},
+            {label: '<img src="legend/MGCVicDrainageInternal_12.png" /> MGC Vic Drainage (Internal)', layer: layer_MGCVicDrainageInternal_12},
+            {label: '<img src="legend/MGCVicDrainageInternalSIorJCN_11.png" /> MGC Vic Drainage (Internal SI or JCN)', layer: layer_MGCVicDrainageInternalSIorJCN_11},]},
+        {label: '<b>Irrigation</b>',  selectAllCheckbox: true, children: [
+            {label: '<img src="legend/MGCVicIrrigationValve_10.png" /> MGC Vic Irrigation (Valve)', layer: layer_MGCVicIrrigationValve_10},
+            {label: '<img src="legend/MGCVicIrrigationTrunk_9.png" /> MGC Vic Irrigation (Trunk)', layer: layer_MGCVicIrrigationTrunk_9},
+            {label: '<img src="legend/MGCVicIrrigationSpike_8.png" /> MGC Vic Irrigation (Spike)', layer: layer_MGCVicIrrigationSpike_8},
+            {label: '<img src="legend/MGCVicIrrigationHead_7.png" /> MGC Vic Irrigation (Head)', layer: layer_MGCVicIrrigationHead_7},
+            {label: '<img src="legend/MGCVicIrrigationDistribution_6.png" /> MGC Vic Irrigation (Distribution)', layer: layer_MGCVicIrrigationDistribution_6},]},
+        {label: '<b>Tee, Greens, Fairways and Bunkers</b>',  selectAllCheckbox: true, children: [
+            {label: '<img src="legend/MGCVicTees_5.png" /> MGC Vic Tees', layer: layer_MGCVicTees_5},
+            {label: '<img src="legend/MGCVicGreens_4.png" /> MGC Vic Greens', layer: layer_MGCVicGreens_4},
+            {label: '<img src="legend/MGCVicFairways_3.png" /> MGC Vic Fairways', layer: layer_MGCVicFairways_3},
+            {label: '<img src="legend/MGCVicBunkers2025_2.png" /> MGC Vic Bunkers (2025)', layer: layer_MGCVicBunkers2025_2},
+            {label: '<img src="legend/MGCVicGreensPrevious_1.png" /> MGC Vic Greens (Previous)', layer: layer_MGCVicGreensPrevious_1},
+            {label: '<img src="legend/MGCVicBunkersPrevious_0.png" /> MGC Vic Bunkers (Previous)', layer: layer_MGCVicBunkersPrevious_0},]},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: false, 
+        });
+        lay.addTo(map);
+		document.addEventListener("DOMContentLoaded", function() {
+            // set new Layers List height which considers toggle icon
+            function newLayersListHeight() {
+                var layerScrollbarElement = document.querySelector('.leaflet-control-layers-scrollbar');
+                if (layerScrollbarElement) {
+                    var layersListElement = document.querySelector('.leaflet-control-layers-list');
+                    var originalHeight = layersListElement.style.height 
+                        || window.getComputedStyle(layersListElement).height;
+                    var newHeight = parseFloat(originalHeight) - 50;
+                    layersListElement.style.height = newHeight + 'px';
+                }
+            }
+            var isLayersListExpanded = true;
+            var controlLayersElement = document.querySelector('.leaflet-control-layers');
+            var toggleLayerControl = document.querySelector('.leaflet-control-layers-toggle');
+            // toggle Collapsed/Expanded and apply new Layers List height
+            toggleLayerControl.addEventListener('click', function() {
+                if (isLayersListExpanded) {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                } else {
+                    controlLayersElement.classList.add('leaflet-control-layers-expanded');
+                }
+                isLayersListExpanded = !isLayersListExpanded;
+                newLayersListHeight()
+            });	
+			// apply new Layers List height if toggle layerstree
+			if (controlLayersElement) {
+				controlLayersElement.addEventListener('click', function(event) {
+					var toggleLayerHeaderPointer = event.target.closest('.leaflet-layerstree-header-pointer span');
+					if (toggleLayerHeaderPointer) {
+						newLayersListHeight();
+					}
+				});
+			}
+            // Collapsed/Expanded at Start to apply new height
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            // Collapsed touch/small screen
+            var isSmallScreen = window.innerWidth < 650;
+            if (isSmallScreen) {
+                setTimeout(function() {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                    isLayersListExpanded = !isLayersListExpanded;
+                }, 500);
+            }  
+        });       
+        setBounds();
+        L.ImageOverlay.include({
+            getBounds: function () {
+                return this._bounds;
+            }
+        });
+        </script>        
+    </body>
+</html>
